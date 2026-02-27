@@ -473,7 +473,7 @@ export default function NICUDrugCalculator() {
       </div>
 
       {!isCustom && drug.name && (
-        <p className="text-xs font-bold text-[#F48C25] mb-2">{drug.name}{drug.rangeMin > 0 ? ` (${drug.rangeMin}–${drug.rangeMax} ${unit})` : ""}</p>
+        <p className="text-sm font-bold text-[#F48C25] mb-2">💊 {drug.name}{drug.rangeMin > 0 ? ` (${drug.rangeMin}–${drug.rangeMax} ${unit})` : ""}</p>
       )}
 
       {/* ===== 처방 검증 ===== */}
