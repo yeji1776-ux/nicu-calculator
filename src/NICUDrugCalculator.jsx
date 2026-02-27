@@ -287,13 +287,14 @@ export default function NICUDrugCalculator() {
   const dilutionPresets = useMemo(() => {
     if (!currentRatio) return { diluted: [], concentrated: [] };
     const { rate, dose } = currentRatio;
-    // 희석 = 같은 dose에 rate↑ (농도 낮음), 농축 = 같은 dose에 rate↓ (농도 높음)
     const diluted = [
-      { rate: rate * 4, dose, factor: "1/4 농축 (4배 희석)" },
-      { rate: rate * 2, dose, factor: "1/2 농축 (2배 희석)" },
+      { rate: rate * 4, dose, factor: "4배 희석" },
+      { rate: rate * 3, dose, factor: "3배 희석" },
+      { rate: rate * 2, dose, factor: "2배 희석" },
     ];
     const concentrated = [
       { rate: rate / 2, dose, factor: "2배 농축" },
+      { rate: rate / 3, dose, factor: "3배 농축" },
       { rate: rate / 4, dose, factor: "4배 농축" },
     ];
     return { diluted, concentrated };
@@ -516,13 +517,13 @@ export default function NICUDrugCalculator() {
             >
               <option value="">비율을 선택하세요</option>
               {currentRatio && dilutionPresets.diluted.map((p, i) => (
-                <option key={`d${i}`} value={`${p.rate}|${p.dose}`}>🔽 {n(p.rate)} cc/hr = {n(p.dose)} {unit} ({p.factor})</option>
+                <option key={`d${i}`} value={`${p.rate}|${p.dose}`}>{n(p.rate)} cc/hr = {n(p.dose)} {unit} ({p.factor})</option>
               ))}
-              {currentRatio && <option value="current">📋 {n(currentRatio.rate)} cc/hr = {n(currentRatio.dose)} {unit} (현재 믹싱)</option>}
+              {currentRatio && <option value="current">{n(currentRatio.rate)} cc/hr = {n(currentRatio.dose)} {unit} (현재 믹싱)</option>}
               {currentRatio && dilutionPresets.concentrated.map((p, i) => (
-                <option key={`c${i}`} value={`${p.rate}|${p.dose}`}>🔼 {n(p.rate)} cc/hr = {n(p.dose)} {unit} ({p.factor})</option>
+                <option key={`c${i}`} value={`${p.rate}|${p.dose}`}>{n(p.rate)} cc/hr = {n(p.dose)} {unit} ({p.factor})</option>
               ))}
-              <option value="custom">✏️ 직접 입력</option>
+              <option value="custom">직접 입력</option>
             </select>
             {selectedPresetKey === "custom" && (
               <div className="flex gap-2 mt-2 items-center">
