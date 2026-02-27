@@ -138,10 +138,10 @@ function InfoPanel() {
   const allKeywords = [...new Set(currentCat.drugs.flatMap(d => d.keywords || []))];
   return (
     <>
-      <div className="flex gap-1 bg-white rounded-xl p-1 mb-4 border border-gray-100 shadow-sm overflow-x-auto">
+      <div className="flex flex-wrap gap-1 bg-white rounded-xl p-1 mb-4 border border-gray-100 shadow-sm">
         {cats.map((cat) => (
           <button key={cat.id} onClick={() => { setActiveCat(cat.id); setExpandedGlossary(null); }}
-            className={`flex-shrink-0 py-2 px-3 rounded-lg text-center transition-all ${activeCat === cat.id ? "bg-[#F48C25] text-white shadow-sm" : "text-gray-500 hover:text-gray-600"}`}>
+            className={`py-2 px-3 rounded-lg text-center transition-all ${activeCat === cat.id ? "bg-[#F48C25] text-white shadow-sm" : "text-gray-500 hover:text-gray-600"}`}>
             <span className="text-xs font-semibold whitespace-nowrap">{cat.label}</span>
           </button>
         ))}
