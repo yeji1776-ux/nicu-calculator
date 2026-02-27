@@ -271,7 +271,7 @@ export default function NICUDrugCalculator() {
   const doseToRate = useCallback((d) => { const w = parseFloat(weight); return w && concentration ? (parseFloat(d) * w * timeFactor) / concentration : 0; }, [weight, concentration, timeFactor]);
   const isInRange = (dose) => (!drug.rangeMin && !drug.rangeMax) ? null : dose >= drug.rangeMin && dose <= drug.rangeMax;
 
-  // 현재 믹싱 비율 자동 계산
+  // 현재 mix 비율 자동 계산
   const currentRatio = useMemo(() => {
     if (!concentration || !parseFloat(weight)) return null;
     const tryRates = [1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.001];
@@ -283,7 +283,7 @@ export default function NICUDrugCalculator() {
 
   const ratioPresets = useMemo(() => generateRatioPresets(drug), [drug]);
 
-  // 현재 믹싱 기준 희석/농축 프리셋 생성
+  // 현재 mix 기준 희석/농축 프리셋 생성
   const dilutionPresets = useMemo(() => {
     if (!currentRatio) return { diluted: [], concentrated: [] };
     const { rate, dose } = currentRatio;
@@ -461,10 +461,9 @@ export default function NICUDrugCalculator() {
           <div className="flex flex-wrap gap-1.5">
             {DRUG_PRESETS.filter(d => d.category === selectedCategory).map((d) => { const idx = DRUG_PRESETS.indexOf(d); return (<button key={idx} onClick={() => handleDrugSelect(idx)} className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${selectedDrug === idx ? "bg-[#F48C25] text-white" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}>{d.name}</button>); })}
           </div>
-          {(drug.note || drug.rangeMin > 0) && (
-            <div className="mt-2 bg-amber-50/80 rounded-lg px-3 py-2 flex flex-col gap-0.5">
-              {drug.rangeMin > 0 && <p className="text-xs font-semibold text-[#F48C25]">📏 {drug.rangeMin}–{drug.rangeMax} {unit}</p>}
-              {drug.note && <div className="text-xs text-amber-600">{drug.note.split("\n").map((line, j) => <p key={j}>💡 {line}</p>)}</div>}
+          {drug.rangeMin > 0 && (
+            <div className="mt-2 bg-amber-50/80 rounded-lg px-3 py-2">
+              <p className="text-xs font-semibold text-[#F48C25]">{drug.rangeMin}–{drug.rangeMax} {unit}</p>
             </div>
           )}
         </div>
@@ -480,16 +479,20 @@ export default function NICUDrugCalculator() {
         {tabs.map((t) => (<button key={t.key} onClick={() => setActiveTab(t.key)} className={`flex-1 py-2.5 rounded-lg text-center transition-all ${activeTab === t.key ? "bg-[#F48C25] text-white shadow-sm" : "text-gray-500 hover:text-gray-600"}`}><span className="text-xs font-semibold">{t.icon} {t.label}</span></button>))}
       </div>
 
+      {!isCustom && drug.name && (
+        <p className="text-xs font-bold text-[#F48C25] mb-2">{drug.name}{drug.rangeMin > 0 ? ` (${drug.rangeMin}–${drug.rangeMax} ${unit})` : ""}</p>
+      )}
+
       {/* ===== 처방 검증 ===== */}
       {activeTab === "verify" && (
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
           <p className="text-sm font-bold text-gray-700 mb-0.5">처방 검증</p>
-          <p className="text-xs text-gray-500 mb-4">기본 정보를 입력하면 현재 믹싱 비율을 자동 계산합니다</p>
+          <p className="text-xs text-gray-500 mb-4">기본 정보를 입력하면 현재 mix 비율을 자동 계산합니다</p>
 
-          {/* 현재 믹싱 비율 */}
+          {/* 현재 mix 비율 */}
           {currentRatio ? (
             <div className="bg-[#FEF3E2] rounded-2xl p-4 border border-[#F48C25]/30 mb-4">
-              <p className="text-xs text-[#F48C25] font-semibold mb-2">📋 현재 믹싱 비율</p>
+              <p className="text-xs text-[#F48C25] font-semibold mb-2">📋 현재 mix 비율</p>
               <div className="flex items-baseline gap-2 mb-2">
                 <span className="text-2xl font-extrabold text-gray-800">{n(currentRatio.rate)}</span>
                 <span className="text-sm text-gray-500">cc/hr</span>
@@ -519,7 +522,7 @@ export default function NICUDrugCalculator() {
               {currentRatio && dilutionPresets.diluted.map((p, i) => (
                 <option key={`d${i}`} value={`${p.rate}|${p.dose}`}>{n(p.rate)} cc/hr = {n(p.dose)} {unit} ({p.factor})</option>
               ))}
-              {currentRatio && <option value="current">{n(currentRatio.rate)} cc/hr = {n(currentRatio.dose)} {unit} (현재 믹싱)</option>}
+              {currentRatio && <option value="current">{n(currentRatio.rate)} cc/hr = {n(currentRatio.dose)} {unit} (현재 mix)</option>}
               {currentRatio && dilutionPresets.concentrated.map((p, i) => (
                 <option key={`c${i}`} value={`${p.rate}|${p.dose}`}>{n(p.rate)} cc/hr = {n(p.dose)} {unit} ({p.factor})</option>
               ))}
@@ -566,7 +569,7 @@ export default function NICUDrugCalculator() {
           <div className="mb-4"><p className={lbl}>원하는 용량 ({unit})</p><input type="number" step="0.01" value={desiredDose} onChange={(e) => setDesiredDose(e.target.value)} className={inp} /></div>
           {parseFloat(desiredDose) > 0 && (concentration > 0 || selectedPreset) && (
             <div className="flex flex-col gap-3">
-              {concentration > 0 && currentRatio && <BigResult label={`현재 믹싱 기준 (${n(currentRatio.rate)} cc/hr = ${n(currentRatio.dose)} ${unit})`} value={doseToRate(desiredDose).toFixed(2)} sub="cc/hr" dose={parseFloat(desiredDose)} color="blue" />}
+              {concentration > 0 && currentRatio && <BigResult label={`현재 mix 기준 (${n(currentRatio.rate)} cc/hr = ${n(currentRatio.dose)} ${unit})`} value={doseToRate(desiredDose).toFixed(2)} sub="cc/hr" dose={parseFloat(desiredDose)} color="blue" />}
               {selectedPreset && (() => { const presetRate = parseFloat(desiredDose) * selectedPreset.rate / selectedPreset.dose; return (
                 <BigResult label={`선택 비율 (${n(selectedPreset.rate)} cc/hr = ${n(selectedPreset.dose)} ${unit}) 기준`} value={presetRate.toFixed(2)} sub="cc/hr" dose={parseFloat(desiredDose)} color="amber" />
               ); })()}
@@ -581,7 +584,7 @@ export default function NICUDrugCalculator() {
           <div className="mb-4"><p className={lbl}>현재 주입속도 (cc/hr)</p><input type="number" step="0.01" value={givenRate} onChange={(e) => setGivenRate(e.target.value)} className={inp} /></div>
           {parseFloat(givenRate) > 0 && (concentration > 0 || selectedPreset) && (
             <div className="flex flex-col gap-3">
-              {concentration > 0 && currentRatio && <BigResult label={`현재 믹싱 기준 (${n(currentRatio.rate)} cc/hr = ${n(currentRatio.dose)} ${unit})`} value={rateToDose(givenRate).toFixed(2)} sub={unit} dose={rateToDose(givenRate)} color="green" />}
+              {concentration > 0 && currentRatio && <BigResult label={`현재 mix 기준 (${n(currentRatio.rate)} cc/hr = ${n(currentRatio.dose)} ${unit})`} value={rateToDose(givenRate).toFixed(2)} sub={unit} dose={rateToDose(givenRate)} color="green" />}
               {selectedPreset && (() => { const presetDose = parseFloat(givenRate) * selectedPreset.dose / selectedPreset.rate; return (
                 <BigResult label={`선택 비율 (${n(selectedPreset.rate)} cc/hr = ${n(selectedPreset.dose)} ${unit}) 기준`} value={n(presetDose)} sub={unit} dose={presetDose} color="amber" />
               ); })()}
@@ -592,10 +595,10 @@ export default function NICUDrugCalculator() {
 
       {activeTab === "table" && (
         <div className="flex flex-col gap-4">
-          {/* 현재 믹싱 기준 환산표 */}
+          {/* 현재 mix 기준 환산표 */}
           {concentration > 0 && parseFloat(weight) > 0 && (
             <div className="bg-[#FEF3E2] rounded-2xl p-4 border border-[#F48C25]/30 shadow-sm">
-              <p className="text-sm font-bold text-[#E67E17] mb-0.5">현재 믹싱 환산표</p>
+              <p className="text-sm font-bold text-[#E67E17] mb-0.5">현재 mix 환산표</p>
               {currentRatio && <p className="text-xs text-gray-500 mb-0.5">{n(currentRatio.rate)} cc/hr = {n(currentRatio.dose)} {unit}</p>}
               <p className="text-xs text-gray-400 mb-2">{drug.name} {drugAmount}{unit.startsWith("units") ? " units" : " mg"} + {totalVolume} cc · {weight} kg</p>
               <div className="overflow-auto max-h-40 rounded-lg border border-[#F48C25]/20">
