@@ -397,7 +397,7 @@ export default function NICUDrugCalculator() {
         <div className="flex items-center gap-3 mb-1">
           <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, #F48C25, #E67E17)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, boxShadow: "0 4px 12px rgba(244,140,37,0.3)" }}>🏥</div>
           <div className="flex-1">
-            <h1 className="text-lg font-extrabold text-gray-800 leading-tight">NICU Calculator</h1>
+            <h1 className="text-lg font-extrabold text-gray-800 leading-tight cursor-pointer" onClick={() => window.location.reload()}>NICU Calculator</h1>
             <p className="text-xs text-gray-500">주입속도 계산 · 처방 검증 · 약물 레퍼런스</p>
           </div>
           <button onClick={() => setShowMiniCalc(!showMiniCalc)}
