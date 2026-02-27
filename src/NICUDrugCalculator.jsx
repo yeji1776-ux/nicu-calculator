@@ -342,7 +342,7 @@ export default function NICUDrugCalculator() {
   const BigResult = ({ label, value, sub, dose, color = "blue" }) => {
     const bg = { blue: "bg-[#FEF3E2] border-[#F48C25]/30", green: "bg-emerald-50 border-emerald-100", amber: "bg-amber-50 border-amber-200" }[color];
     const accent = { blue: "text-[#F48C25]", green: "text-emerald-400", amber: "text-amber-500" }[color];
-    return (<div className={`${bg} rounded-2xl p-6 text-center border`}><p className={`text-xs ${accent} font-medium mb-1`}>{label}</p><p className="text-4xl font-extrabold text-gray-800 tracking-tight">{value}</p><p className="text-sm text-gray-500 mt-1">{sub}</p>{dose !== undefined && <div className="mt-3"><RangeBadge dose={dose} /></div>}</div>);
+    return (<div className={`${bg} rounded-2xl p-6 text-center border`}><div className={`text-xs ${accent} font-medium mb-1`}>{label.split("\n").map((l,i) => <p key={i}>{l}</p>)}</div><p className="text-4xl font-extrabold text-gray-800 tracking-tight">{value} <span className="text-lg font-bold text-gray-500">{sub}</span></p>{dose !== undefined && <div className="mt-3"><RangeBadge dose={dose} /></div>}</div>);
   };
 
   if (!authed) {
@@ -566,12 +566,12 @@ export default function NICUDrugCalculator() {
       {activeTab === "calc" && (
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
           <p className="text-sm font-bold text-gray-700 mb-4">용량 → 주입속도</p>
-          <div className="mb-4"><p className={lbl}>원하는 용량 ({unit})</p><input type="number" step="0.01" value={desiredDose} onChange={(e) => setDesiredDose(e.target.value)} className={inp} /></div>
+          <div className="mb-4"><p className={lbl}>원하는 용량</p><div className="flex items-center gap-2"><input type="number" step="0.01" value={desiredDose} onChange={(e) => setDesiredDose(e.target.value)} className={inp + " flex-1"} /><span className="text-xs text-gray-500 font-medium whitespace-nowrap">{unit}</span></div></div>
           {parseFloat(desiredDose) > 0 && (concentration > 0 || selectedPreset) && (
             <div className="flex flex-col gap-3">
-              {concentration > 0 && currentRatio && <BigResult label={`현재 mix 기준 (${n(currentRatio.rate)} cc/hr = ${n(currentRatio.dose)} ${unit})`} value={doseToRate(desiredDose).toFixed(2)} sub="cc/hr" dose={parseFloat(desiredDose)} color="blue" />}
+              {concentration > 0 && currentRatio && <BigResult label={`현재 mix 기준\n${n(currentRatio.rate)} = ${n(currentRatio.dose)}`} value={doseToRate(desiredDose).toFixed(2)} sub="cc/hr" dose={parseFloat(desiredDose)} color="blue" />}
               {selectedPreset && (() => { const presetRate = parseFloat(desiredDose) * selectedPreset.rate / selectedPreset.dose; return (
-                <BigResult label={`선택 비율 (${n(selectedPreset.rate)} cc/hr = ${n(selectedPreset.dose)} ${unit}) 기준`} value={presetRate.toFixed(2)} sub="cc/hr" dose={parseFloat(desiredDose)} color="amber" />
+                <BigResult label={`선택 비율 기준\n${n(selectedPreset.rate)} = ${n(selectedPreset.dose)}`} value={presetRate.toFixed(2)} sub="cc/hr" dose={parseFloat(desiredDose)} color="amber" />
               ); })()}
             </div>
           )}
@@ -581,12 +581,12 @@ export default function NICUDrugCalculator() {
       {activeTab === "reverse" && (
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
           <p className="text-sm font-bold text-gray-700 mb-4">주입속도 → 용량</p>
-          <div className="mb-4"><p className={lbl}>현재 주입속도 (cc/hr)</p><input type="number" step="0.01" value={givenRate} onChange={(e) => setGivenRate(e.target.value)} className={inp} /></div>
+          <div className="mb-4"><p className={lbl}>현재 주입속도</p><div className="flex items-center gap-2"><input type="number" step="0.01" value={givenRate} onChange={(e) => setGivenRate(e.target.value)} className={inp + " flex-1"} /><span className="text-xs text-gray-500 font-medium whitespace-nowrap">cc/hr</span></div></div>
           {parseFloat(givenRate) > 0 && (concentration > 0 || selectedPreset) && (
             <div className="flex flex-col gap-3">
-              {concentration > 0 && currentRatio && <BigResult label={`현재 mix 기준 (${n(currentRatio.rate)} cc/hr = ${n(currentRatio.dose)} ${unit})`} value={rateToDose(givenRate).toFixed(2)} sub={unit} dose={rateToDose(givenRate)} color="green" />}
+              {concentration > 0 && currentRatio && <BigResult label={`현재 mix 기준\n${n(currentRatio.rate)} = ${n(currentRatio.dose)}`} value={rateToDose(givenRate).toFixed(2)} sub={unit} dose={rateToDose(givenRate)} color="green" />}
               {selectedPreset && (() => { const presetDose = parseFloat(givenRate) * selectedPreset.dose / selectedPreset.rate; return (
-                <BigResult label={`선택 비율 (${n(selectedPreset.rate)} cc/hr = ${n(selectedPreset.dose)} ${unit}) 기준`} value={n(presetDose)} sub={unit} dose={presetDose} color="amber" />
+                <BigResult label={`선택 비율 기준\n${n(selectedPreset.rate)} = ${n(selectedPreset.dose)}`} value={n(presetDose)} sub={unit} dose={presetDose} color="amber" />
               ); })()}
             </div>
           )}
