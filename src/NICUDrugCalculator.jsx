@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 
 const GLOSSARY = {
   "catecholamine": "우리 몸에서 자연적으로 만들어지는 호르몬(dopamine, epinephrine, norepinephrine). 심장을 더 세게 뛰게 하고, 혈관을 조이거나 넓혀서 혈압과 심박출량을 조절함. NICU에서 가장 많이 쓰는 승압제/강심제 계열",
@@ -72,6 +72,34 @@ const DRUG_CATEGORIES = [
     drugs: [
       { name: "단위 직접 입력", generic: "", unit: "mcg/kg/min", defaultDrug: 0, defaultFluid: "", defaultTotal: 20, rangeMin: 0, rangeMax: 0, note: "", desc: "", keywords: [], incompatible: [] },
     ],
+  },
+];
+
+const NRP_DRUGS = [
+  {
+    name: "Epinephrine",
+    routes: [
+      { route: "IV/UVC", conc: "1:10,000 (0.1 mg/mL)", dose: "0.01-0.03 mg/kg", doseMin: 0.01, doseMax: 0.03, mlMin: 0.1, mlMax: 0.3, unit: "mL/kg", note: "빠르게 flush (1-3 mL NS)" },
+      { route: "ETT", conc: "1:10,000 (0.1 mg/mL)", dose: "0.05-0.1 mg/kg", doseMin: 0.05, doseMax: 0.1, mlMin: 0.5, mlMax: 1.0, unit: "mL/kg", note: "IV 접근 불가 시에만 사용" },
+    ],
+    alert: "IV, ETT 경로별 용량 다름 주의!"
+  },
+  {
+    name: "NaHCO3 (Bivon)",
+    indication: "심한 대사성 산증 (pH <7.0), 적절한 환기 확보 후 사용",
+    alert: "반드시 중심정맥으로 투여! 말초정맥 투여 금지!",
+    routes: [
+      { route: "IV (slow push)", conc: "8.4% (1 mEq/mL)", dose: "1-2 mEq/kg", doseMin: 1, doseMax: 2, mlMin: 1, mlMax: 2, unit: "mL/kg", note: "증류수 희석 (1:1, 1:2, 1:3), 2분 이상 천천히 주입" },
+      { route: "IVF", conc: "8.4% (1 mEq/mL)", dose: "1-2 mEq/kg", doseMin: 1, doseMax: 2, mlMin: 1, mlMax: 2, unit: "mL/kg", note: "증류수 희석 (1:1, 1:2, 1:3)" },
+    ]
+  },
+  {
+    name: "Calcium Gluconate",
+    indication: "확인된 저칼슘혈증, 고칼륨혈증, 고마그네슘혈증",
+    alert: "반드시 중심정맥으로 투여! 말초정맥 투여 금지!",
+    routes: [
+      { route: "IVF", conc: "10% (100 mg/mL)", dose: "100 mg/kg", doseMin: 100, doseMax: 100, mlMin: 1, mlMax: 1, unit: "mL/kg", note: "D5W, D10W에 희석" },
+    ]
   },
 ];
 
@@ -221,6 +249,28 @@ export default function NICUDrugCalculator() {
   const [calcPrev, setCalcPrev] = useState(null);
   const [calcOp, setCalcOp] = useState(null);
   const [calcReset, setCalcReset] = useState(false);
+  const [nrpWeight, setNrpWeight] = useState("2");
+  const [nrpEpiDose, setNrpEpiDose] = useState({ "IV/UVC": "0.2", "ETT": "1.0" });
+  const [nrpBivonDose, setNrpBivonDose] = useState("1");
+  const [nrpBivonRatio, setNrpBivonRatio] = useState("2");
+  const [nrpCaDose, setNrpCaDose] = useState("100");
+  const [nrpCaDiluent, setNrpCaDiluent] = useState("5DW");
+  const [nrpFullscreen, setNrpFullscreen] = useState(false);
+  const [nrpStartTime, setNrpStartTime] = useState(null);
+  const [nrpEndTime, setNrpEndTime] = useState(null);
+  const [nrpElapsed, setNrpElapsed] = useState(0);
+  const [nrpNow, setNrpNow] = useState(new Date());
+  const nrpTimerRef = useRef(null);
+
+  useEffect(() => {
+    nrpTimerRef.current = setInterval(() => {
+      setNrpNow(new Date());
+      if (nrpStartTime && !nrpEndTime) {
+        setNrpElapsed(Math.floor((Date.now() - nrpStartTime) / 1000));
+      }
+    }, 1000);
+    return () => clearInterval(nrpTimerRef.current);
+  }, [nrpStartTime, nrpEndTime]);
 
   const calcInput = (v) => {
     if (calcReset) { setCalcDisplay(v === "." ? "0." : v); setCalcReset(false); }
@@ -337,10 +387,10 @@ export default function NICUDrugCalculator() {
 
   const RangeBadge = ({ dose }) => { if (!drug.rangeMin && !drug.rangeMax) return null; const ok = isInRange(dose); return (<span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${ok ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-500"}`}>{ok ? "✓ 범위 내" : "⚠ 범위 밖"} <span className="text-gray-500 font-normal">({drug.rangeMin}–{drug.rangeMax})</span></span>); };
 
-  const BigResult = ({ label, value, sub, dose, color = "blue" }) => {
-    const bg = { blue: "bg-[#FEF3E2] border-[#F48C25]/30", green: "bg-emerald-50 border-emerald-100", amber: "bg-amber-50 border-amber-200" }[color];
-    const accent = { blue: "text-[#F48C25]", green: "text-emerald-400", amber: "text-amber-500" }[color];
-    return (<div className={`${bg} rounded-2xl p-6 text-center border`}><div className={`text-xs ${accent} font-medium mb-1`}>{label.split("\n").map((l,i) => <p key={i}>{l}</p>)}</div><p className="text-4xl font-extrabold text-gray-800 tracking-tight">{value} <span className="text-lg font-bold text-gray-500">{sub}</span></p>{dose !== undefined && <div className="mt-3"><RangeBadge dose={dose} /></div>}</div>);
+  const BigResult = ({ label, value, sub, dose, color = "blue", inputValue, inputUnit }) => {
+    const bg = { blue: "bg-white border-[#F48C25]/30", green: "bg-white border-[#F48C25]/30", amber: "bg-white border-amber-300" }[color];
+    const accent = { blue: "text-[#F48C25]", green: "text-[#F48C25]", amber: "text-amber-500" }[color];
+    return (<div className={`${bg} rounded-2xl p-4 border`}><div className={`text-xs ${accent} font-medium mb-2`}>{label.split("\n").map((l,i) => <p key={i}>{l}</p>)}</div><p className="text-2xl font-extrabold text-gray-800 tracking-tight">{value} <span className="text-sm font-bold text-gray-500">{sub}</span>{inputValue && <><span className="text-gray-300"> = </span><span className="text-gray-400">{inputValue} <span className="text-sm font-bold">{inputUnit}</span></span></>}</p></div>);
   };
 
   if (!authed) {
@@ -435,6 +485,7 @@ export default function NICUDrugCalculator() {
 
       <div className="flex bg-white rounded-xl p-1 mb-4 border border-gray-100 shadow-sm">
         <button onClick={() => setMainView("calc")} className={`flex-1 py-2.5 rounded-lg text-center transition-all ${mainView === "calc" ? "bg-[#F48C25] text-white shadow-sm" : "text-gray-500 hover:text-gray-600"}`}><span className="text-sm font-semibold">💊 주입속도 계산</span></button>
+        <button onClick={() => { setMainView("nrp"); if (weight && !nrpWeight) setNrpWeight(weight); }} className={`flex-1 py-2.5 rounded-lg text-center transition-all ${mainView === "nrp" ? "bg-[#F48C25] text-white shadow-sm" : "text-gray-500 hover:text-gray-600"}`}><span className="text-sm font-semibold">🚨 NRP</span></button>
         <button onClick={() => setMainView("info")} className={`flex-1 py-2.5 rounded-lg text-center transition-all ${mainView === "info" ? "bg-[#F48C25] text-white shadow-sm" : "text-gray-500 hover:text-gray-600"}`}><span className="text-sm font-semibold">📖 약물 정보</span></button>
       </div>
 
@@ -484,16 +535,16 @@ export default function NICUDrugCalculator() {
 
           {/* 현재 mix 비율 */}
           {currentRatio ? (
-            <div className="bg-[#FEF3E2] rounded-2xl p-4 border border-[#F48C25]/30 mb-4">
+            <div className="bg-white rounded-2xl p-4 border border-[#F48C25]/30 mb-4">
               <p className="text-xs text-[#F48C25] font-semibold mb-2">📋 현재 mix 비율</p>
-              <div className="flex items-baseline gap-2 mb-2">
+              <div className="flex items-baseline gap-2 flex-wrap">
                 <span className="text-2xl font-extrabold text-gray-800">{n(currentRatio.rate)}</span>
                 <span className="text-sm text-gray-500">cc/hr</span>
                 <span className="text-xl font-bold text-[#F48C25]/50">=</span>
                 <span className="text-2xl font-extrabold text-[#F48C25]">{n(currentRatio.dose)}</span>
                 <span className="text-sm text-gray-500">{unit}</span>
+                <RangeBadge dose={currentRatio.dose} />
               </div>
-              <RangeBadge dose={currentRatio.dose} />
             </div>
           ) : (
             <div className="bg-gray-50/50 rounded-2xl p-4 border border-gray-100 mb-4 text-center">
@@ -536,7 +587,7 @@ export default function NICUDrugCalculator() {
 
           {/* 선택한 비율로 믹싱 계산 */}
           {selectedPreset && (
-            <div className="bg-amber-50/70 rounded-2xl p-4 border border-amber-200">
+            <div className="bg-white rounded-2xl p-4 border border-amber-300">
               <p className="text-xs font-bold text-amber-700 mb-1">
                 💡 {n(selectedPreset.rate)} cc/hr = {n(selectedPreset.dose)} {unit} 맞추려면?
               </p>
@@ -566,9 +617,9 @@ export default function NICUDrugCalculator() {
           <div className="mb-4"><p className={lbl}>원하는 용량</p><div className="flex items-center gap-2"><input type="number" step="0.01" value={desiredDose} onChange={(e) => setDesiredDose(e.target.value)} className={inp + " flex-1"} /><span className="text-xs text-gray-500 font-medium whitespace-nowrap">{unit}</span></div></div>
           {parseFloat(desiredDose) > 0 && (concentration > 0 || selectedPreset) && (
             <div className="flex flex-col gap-3">
-              {concentration > 0 && currentRatio && <BigResult label={`현재 mix 기준\n${n(currentRatio.rate)} = ${n(currentRatio.dose)}`} value={doseToRate(desiredDose).toFixed(2)} sub="cc/hr" dose={parseFloat(desiredDose)} color="blue" />}
+              {concentration > 0 && currentRatio && <BigResult label={`현재 mix 기준\n${n(currentRatio.rate)} = ${n(currentRatio.dose)}`} value={doseToRate(desiredDose).toFixed(2)} sub="cc/hr" dose={parseFloat(desiredDose)} color="blue" inputValue={n(parseFloat(desiredDose))} inputUnit={unit} />}
               {selectedPreset && (() => { const presetRate = parseFloat(desiredDose) * selectedPreset.rate / selectedPreset.dose; return (
-                <BigResult label={`선택 비율 기준\n${n(selectedPreset.rate)} = ${n(selectedPreset.dose)}`} value={presetRate.toFixed(2)} sub="cc/hr" dose={parseFloat(desiredDose)} color="amber" />
+                <BigResult label={`선택 비율 기준\n${n(selectedPreset.rate)} = ${n(selectedPreset.dose)}`} value={presetRate.toFixed(2)} sub="cc/hr" dose={parseFloat(desiredDose)} color="amber" inputValue={n(parseFloat(desiredDose))} inputUnit={unit} />
               ); })()}
             </div>
           )}
@@ -581,9 +632,9 @@ export default function NICUDrugCalculator() {
           <div className="mb-4"><p className={lbl}>현재 주입속도</p><div className="flex items-center gap-2"><input type="number" step="0.01" value={givenRate} onChange={(e) => setGivenRate(e.target.value)} className={inp + " flex-1"} /><span className="text-xs text-gray-500 font-medium whitespace-nowrap">cc/hr</span></div></div>
           {parseFloat(givenRate) > 0 && (concentration > 0 || selectedPreset) && (
             <div className="flex flex-col gap-3">
-              {concentration > 0 && currentRatio && <BigResult label={`현재 mix 기준\n${n(currentRatio.rate)} = ${n(currentRatio.dose)}`} value={rateToDose(givenRate).toFixed(2)} sub={unit} dose={rateToDose(givenRate)} color="green" />}
+              {concentration > 0 && currentRatio && <BigResult label={`현재 mix 기준\n${n(currentRatio.rate)} = ${n(currentRatio.dose)}`} value={n(parseFloat(givenRate))} sub="cc/hr" dose={rateToDose(givenRate)} color="green" inputValue={rateToDose(givenRate).toFixed(2)} inputUnit={unit} />}
               {selectedPreset && (() => { const presetDose = parseFloat(givenRate) * selectedPreset.dose / selectedPreset.rate; return (
-                <BigResult label={`선택 비율 기준\n${n(selectedPreset.rate)} = ${n(selectedPreset.dose)}`} value={n(presetDose)} sub={unit} dose={presetDose} color="amber" />
+                <BigResult label={`선택 비율 기준\n${n(selectedPreset.rate)} = ${n(selectedPreset.dose)}`} value={n(parseFloat(givenRate))} sub="cc/hr" dose={presetDose} color="amber" inputValue={n(presetDose)} inputUnit={unit} />
               ); })()}
             </div>
           )}
@@ -594,16 +645,15 @@ export default function NICUDrugCalculator() {
         <div className="flex flex-col gap-4">
           {/* 현재 mix 기준 환산표 */}
           {concentration > 0 && parseFloat(weight) > 0 && (
-            <div className="bg-[#FEF3E2] rounded-2xl p-4 border border-[#F48C25]/30 shadow-sm">
+            <div className="bg-white rounded-2xl p-4 border border-[#F48C25]/30 shadow-sm">
               <p className="text-sm font-bold text-[#E67E17] mb-0.5">현재 mix 환산표</p>
               {currentRatio && <p className="text-xs text-gray-500 mb-0.5">{n(currentRatio.rate)} cc/hr = {n(currentRatio.dose)} {unit}</p>}
-              <p className="text-xs text-gray-400 mb-2">{drug.name} {drugAmount}{unit.startsWith("units") ? " units" : " mg"} + {totalVolume} cc · {weight} kg</p>
-              <div className="overflow-auto max-h-40 rounded-lg border border-[#F48C25]/20">
+              <div className="overflow-auto max-h-40 rounded-lg border border-[#F48C25]/30">
                 <table className="w-full text-xs">
                   <thead><tr style={{background:"#fde8c8"}} className="sticky top-0 z-10"><th className="text-left px-3 py-1.5 font-medium text-[#E67E17]">cc/hr</th><th className="text-right px-3 py-1.5 font-medium text-[#E67E17]">{unit}</th><th className="text-center px-2 py-1.5 font-medium text-[#E67E17]">범위</th></tr></thead>
                   <tbody>
                     {rateTable.map((row, i) => { const ok = isInRange(row.dose); return (
-                      <tr key={i} className={`border-t border-[#F48C25]/10 ${ok === true ? "bg-emerald-50/40" : ""}`}>
+                      <tr key={i} className={`border-t border-gray-100 ${ok === true ? "bg-emerald-50/40" : "bg-white"}`}>
                         <td className="px-3 py-1.5 font-mono font-semibold text-[#F48C25]">{row.rate.toFixed(2)}</td>
                         <td className="px-3 py-1.5 text-right font-semibold text-gray-700">{row.dose}</td>
                         <td className="px-2 py-1.5 text-center">{ok === true ? <span className="text-emerald-400">●</span> : ok === false ? <span className="text-gray-200">○</span> : ""}</td>
@@ -616,19 +666,19 @@ export default function NICUDrugCalculator() {
 
           {/* 선택 비율 기준 환산표 */}
           {selectedPreset && (
-            <div className="bg-amber-50/50 rounded-2xl p-4 border border-amber-200 shadow-sm">
+            <div className="bg-white rounded-2xl p-4 border border-amber-200 shadow-sm">
               <p className="text-sm font-bold text-amber-700 mb-0.5">선택 비율 환산표{currentRatio && selectedPresetKey !== "current" && (() => {
                 const ratio = (currentRatio.rate / currentRatio.dose) / (selectedPreset.rate / selectedPreset.dose);
                 if (Math.abs(ratio - 1) < 0.001) return "";
                 return ratio > 1 ? ` (${ratio % 1 === 0 ? ratio : ratio.toFixed(1)}배 농축)` : ` (1/${Math.round(1/ratio)}배 농축 · ${Math.round(1/ratio)}배 희석)`;
               })()}</p>
               <p className="text-xs text-gray-500 mb-2">{n(selectedPreset.rate)} cc/hr = {n(selectedPreset.dose)} {unit}</p>
-              <div className="overflow-auto max-h-40 rounded-lg border border-amber-100">
+              <div className="overflow-auto max-h-40 rounded-lg border border-amber-200">
                 <table className="w-full text-xs">
                   <thead><tr style={{background:"#fef3c7"}} className="sticky top-0 z-10"><th className="text-left px-3 py-1.5 font-medium text-amber-600">cc/hr</th><th className="text-right px-3 py-1.5 font-medium text-amber-600">{unit}</th><th className="text-center px-2 py-1.5 font-medium text-amber-600">범위</th></tr></thead>
                   <tbody>
                     {rateTable.map((row, i) => { const ok = isInRange(row.dose); const presetRate = row.dose * selectedPreset.rate / selectedPreset.dose; return (
-                      <tr key={i} className={`border-t border-amber-50 ${ok === true ? "bg-emerald-50/40" : ""}`}>
+                      <tr key={i} className={`border-t border-gray-100 ${ok === true ? "bg-emerald-50/40" : "bg-white"}`}>
                         <td className="px-3 py-1.5 font-mono font-semibold text-amber-700">{presetRate.toFixed(2)}</td>
                         <td className="px-3 py-1.5 text-right font-semibold text-gray-700">{row.dose}</td>
                         <td className="px-2 py-1.5 text-center">{ok === true ? <span className="text-emerald-400">●</span> : ok === false ? <span className="text-gray-200">○</span> : ""}</td>
@@ -651,6 +701,227 @@ export default function NICUDrugCalculator() {
       </>)}
 
       {mainView === "info" && <InfoPanel />}
+
+      {mainView === "nrp" && (
+        <div className="space-y-4">
+          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3">
+            <div className="flex-1">
+              <p className={lbl}>체중 (kg)</p>
+              <input type="number" step="0.01" value={nrpWeight} onChange={(e) => setNrpWeight(e.target.value)} className={inp} placeholder="체중" />
+            </div>
+            {parseFloat(nrpWeight) > 0 && (
+              <button onClick={() => setNrpFullscreen(true)} className="w-14 h-14 flex items-center justify-center bg-[#F48C25] text-white rounded-2xl shadow-md active:bg-[#E67E17] transition-all shrink-0 mt-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+              </button>
+            )}
+          </div>
+
+          {NRP_DRUGS.map((drug) => {
+            const rawW = parseFloat(nrpWeight);
+            const w = rawW > 0 && rawW < 0.5 ? 0.5 : rawW;
+            const clamped = rawW > 0 && rawW < 0.5;
+            return (
+              <div key={drug.name} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                <p className="text-sm font-bold text-gray-700 mb-1">{drug.name}</p>
+                {drug.indication && <p className="text-xs text-gray-400 mb-2">💉 {drug.indication}</p>}
+                {drug.alert && (
+                  <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-3">
+                    <p className="text-xs font-semibold text-red-600">⚠️ {drug.alert}</p>
+                  </div>
+                )}
+                {drug.routes.map((r) => {
+                  const customDose = drug.name === "Epinephrine" ? parseFloat(nrpEpiDose[r.route]) : NaN;
+                  const customMl = w > 0 && customDose > 0 ? customDose * w : NaN;
+                  const isEtt = drug.name === "Epinephrine" && r.route === "ETT";
+                  const isBivonPush = drug.name === "NaHCO3 (Bivon)" && r.route === "IV (slow push)";
+                  const isCollapsible = isEtt || isBivonPush;
+                  const routeContent = (
+                    <>
+                    <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                      <span className="text-xs font-semibold text-[#F48C25]">{!isCollapsible && "📍 "}{r.route}</span>
+                      <span className="text-xs text-gray-400">({r.conc})</span>
+                      {r.note && <span className="text-xs text-gray-400">· {r.note}</span>}
+                    </div>
+                    {w > 0 ? (
+                      <div className="bg-orange-50 rounded-xl px-3 py-2 mb-1">
+                        <p className="text-base font-bold text-gray-800">
+                          <span className="text-xs font-normal text-gray-500">{r.dose}</span> → {r.mlMin === r.mlMax ? (r.mlMin * w).toFixed(2).replace(/\.?0+$/, "") : `${(r.mlMin * w).toFixed(2).replace(/\.?0+$/, "")} - ${(r.mlMax * w).toFixed(2).replace(/\.?0+$/, "")}`} mL
+                          <span className="text-xs font-normal text-gray-500 ml-1">({w}kg 기준{clamped ? ", 최소 0.5kg 적용" : ""})</span>
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 rounded-xl px-3 py-2 mb-1">
+                        <p className="text-xs text-gray-500">{r.dose}</p>
+                        <p className="text-xs text-gray-400">체중을 입력하면 용량이 계산됩니다</p>
+                      </div>
+                    )}
+                    {drug.name === "Epinephrine" && (
+                      <div className="mt-2 bg-orange-50 border-2 border-[#F48C25] rounded-xl px-4 py-3">
+                        <p className="text-sm font-extrabold text-[#F48C25] mb-2">⚠ 1:10,000 희석 (0.1 mg/mL)</p>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-bold text-gray-500">투여량</span>
+                          <select value={nrpEpiDose[r.route]} onChange={(e) => setNrpEpiDose(prev => ({ ...prev, [r.route]: e.target.value }))} className="px-2 py-1 rounded-lg border border-orange-200 bg-white text-sm font-bold text-[#F48C25] text-center focus:outline-none focus:ring-2 focus:ring-orange-200 cursor-pointer">
+                            {(r.route === "ETT" ? ["0.5", "1.0"] : ["0.1", "0.2", "0.3"]).map(v => (
+                              <option key={v} value={v}>{v} mL/kg</option>
+                            ))}
+                          </select>
+                        </div>
+                        {w > 0 && !isNaN(customMl) ? (
+                          <p className="text-xl font-extrabold text-gray-800 tracking-tight">= {customMl.toFixed(2).replace(/\.?0+$/, "")} mL <span className="text-sm font-bold text-[#F48C25]">({(customMl * 0.1).toFixed(3).replace(/\.?0+$/, "")} mg)</span>{clamped && <span className="text-xs font-medium text-gray-400 ml-2">{w}kg 최소적용</span>}</p>
+                        ) : (
+                          <p className="text-sm text-gray-400">체중 입력 시 계산</p>
+                        )}
+                      </div>
+                    )}
+                    {drug.name === "NaHCO3 (Bivon)" && (
+                      <div className="mt-2 bg-orange-50 border-2 border-[#F48C25] rounded-xl px-4 py-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-bold text-gray-500">투여량</span>
+                          <select value={nrpBivonDose} onChange={(e) => setNrpBivonDose(e.target.value)} className="px-2 py-1 rounded-lg border border-orange-200 bg-white text-sm font-bold text-[#F48C25] text-center focus:outline-none focus:ring-2 focus:ring-orange-200 cursor-pointer">
+                            {["1", "2"].map(v => (
+                              <option key={v} value={v}>{v} mEq/kg</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-bold text-gray-500">증류수 희석</span>
+                          <select value={nrpBivonRatio} onChange={(e) => setNrpBivonRatio(e.target.value)} className="px-2 py-1 rounded-lg border border-orange-200 bg-white text-sm font-bold text-[#F48C25] text-center focus:outline-none focus:ring-2 focus:ring-orange-200 cursor-pointer">
+                            {["1", "2", "3"].map(v => (
+                              <option key={v} value={v}>1:{v}</option>
+                            ))}
+                          </select>
+                        </div>
+                        {w > 0 ? (() => {
+                          const bivonMl = parseFloat(nrpBivonDose) * w;
+                          const dwMl = bivonMl * parseFloat(nrpBivonRatio);
+                          const totalMl = bivonMl + dwMl;
+                          return (
+                            <div>
+                              <p className="text-xl font-extrabold text-gray-800 tracking-tight"><span className="text-gray-500">Bivon</span> {bivonMl.toFixed(1).replace(/\.0$/, "")} mL + <span className="text-gray-500">증류수</span> {dwMl.toFixed(1).replace(/\.0$/, "")} mL = {totalMl.toFixed(1).replace(/\.0$/, "")} mL </p>
+                              {clamped && <p className="text-xs text-gray-400 mt-1">{w}kg 최소적용</p>}
+                            </div>
+                          );
+                        })() : (
+                          <p className="text-sm text-gray-400">체중 입력 시 계산</p>
+                        )}
+                      </div>
+                    )}
+                    {drug.name === "Calcium Gluconate" && r.route.startsWith("IVF") && (
+                      <div className="mt-2 bg-orange-50 border-2 border-[#F48C25] rounded-xl px-4 py-3">
+                        {w > 0 ? (() => {
+                          const caMl = w;
+                          const dilMl = caMl;
+                          const totalMl = caMl + dilMl;
+                          return (
+                            <div>
+                              <p className="text-xl font-extrabold tracking-tight"><span className="text-gray-500">Ca gluconate</span><span className="text-gray-800"> {caMl.toFixed(1).replace(/\.0$/, "")} mL + </span><span className="text-gray-500">{nrpCaDiluent}</span><span className="text-gray-800"> {dilMl.toFixed(1).replace(/\.0$/, "")} mL = {totalMl.toFixed(1).replace(/\.0$/, "")} mL</span></p>
+                              {clamped && <p className="text-xs text-gray-400 mt-1">{w}kg 최소적용</p>}
+                            </div>
+                          );
+                        })() : (
+                          <p className="text-sm text-gray-400">체중 입력 시 계산</p>
+                        )}
+                      </div>
+                    )}
+                    </>
+                  );
+                  return (
+                  <div key={r.route} className="mb-6 last:mb-0">
+                    {isCollapsible ? (
+                      <details className="group">
+                        <summary className="cursor-pointer text-xs font-semibold text-[#F48C25] mb-1 list-none flex items-center gap-1">
+                          <span className="text-gray-400 group-open:rotate-90 transition-transform">▶</span> 📍 {isEtt ? "ETT" : "IV (slow push)"} <span className="text-xs font-normal text-gray-400 group-open:hidden">(펼치기)</span><span className="text-xs font-normal text-gray-400 hidden group-open:inline">(접어두기)</span>
+                        </summary>
+                        <div className="mt-1">{routeContent}</div>
+                      </details>
+                    ) : routeContent}
+                  </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+
+          <p className="text-center text-xs text-gray-500 mt-4">⚠ 참고용 계산기입니다. 최종 투여 전 반드시 이중 확인하세요.</p>
+
+          {nrpFullscreen && (() => {
+            const rawW = parseFloat(nrpWeight);
+            const w = rawW > 0 && rawW < 0.5 ? 0.5 : rawW;
+            const clamped = rawW > 0 && rawW < 0.5;
+            const epiIvDose = parseFloat(nrpEpiDose["IV/UVC"]);
+            const epiIvMl = epiIvDose * w;
+            const epiIvMg = epiIvMl * 0.1;
+            const bivonDose = parseFloat(nrpBivonDose);
+            const bivonMl = bivonDose * w;
+            const bivonDwMl = bivonMl * parseFloat(nrpBivonRatio);
+            const bivonTotal = bivonMl + bivonDwMl;
+            const caMl = w;
+            const caDilMl = caMl;
+            const caTotal = caMl + caDilMl;
+            return (
+              <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-6" onClick={() => setNrpFullscreen(false)}>
+                <div className="w-full space-y-5 px-2" onClick={(e) => e.stopPropagation()}>
+                  <div className="text-center mb-4">
+                    {clamped && <p className="text-white/60 text-sm">{rawW}kg → 최소 0.5kg 적용</p>}
+                    <p className="text-lg font-semibold text-white mb-1">환자 체중</p>
+                    <p className="text-5xl font-extrabold text-[#F48C25] drop-shadow-lg">{w} kg</p>
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-5">
+                    <p className="text-sm font-bold text-[#F48C25] mb-2">Epinephrine IV — 1:10,000 · {epiIvDose} mL/kg</p>
+                    <p className="text-3xl font-extrabold text-gray-800">{epiIvMl.toFixed(2).replace(/\.?0+$/, "")} mL <span className="text-lg font-bold text-[#F48C25]">({epiIvMg.toFixed(3).replace(/\.?0+$/, "")} mg)</span></p>
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-5">
+                    <p className="text-sm font-bold text-[#F48C25] mb-2">Bivon — {bivonDose} mEq/kg · 증류수 1:{nrpBivonRatio}</p>
+                    <p className="text-3xl font-extrabold text-gray-800"><span className="text-gray-500">Bivon</span> {bivonMl.toFixed(1).replace(/\.0$/, "")} mL + <span className="text-gray-500">증류수</span> {bivonDwMl.toFixed(1).replace(/\.0$/, "")} mL = {bivonTotal.toFixed(1).replace(/\.0$/, "")} mL</p>
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-5">
+                    <p className="text-sm font-bold text-[#F48C25] mb-2">Ca Gluconate — 100 mg/kg · {nrpCaDiluent} 1:1</p>
+                    <p className="text-3xl font-extrabold text-gray-800"><span className="text-gray-500">Ca</span> {caMl.toFixed(1).replace(/\.0$/, "")} mL + <span className="text-gray-500">{nrpCaDiluent}</span> {caDilMl.toFixed(1).replace(/\.0$/, "")} mL = {caTotal.toFixed(1).replace(/\.0$/, "")} mL</p>
+                  </div>
+
+                  <div className="bg-white/10 rounded-2xl p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-4xl font-extrabold text-white font-mono">{nrpNow.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}</p>
+                      {nrpStartTime && (
+                        <div className="text-right">
+                          <p className="text-xs text-white/50">경과</p>
+                          <p className={`text-2xl font-extrabold font-mono ${nrpEndTime ? "text-white/60" : "text-[#F48C25]"}`}>{String(Math.floor(nrpElapsed / 60)).padStart(2, "0")}:{String(nrpElapsed % 60).padStart(2, "0")}</p>
+                        </div>
+                      )}
+                    </div>
+                    {nrpStartTime ? (
+                      <>
+                        <p className="text-xs text-white/40">시작 {new Date(nrpStartTime).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}{nrpEndTime && ` → 종료 ${new Date(nrpEndTime).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`}</p>
+                        <div className="flex gap-3 mt-3">
+                          {!nrpEndTime ? (
+                            <button onClick={() => setNrpEndTime(Date.now())} className="flex-1 py-2.5 bg-red-500 text-white font-bold rounded-xl text-sm active:bg-red-600 transition-all">종료</button>
+                          ) : (
+                            <button onClick={() => { setNrpStartTime(null); setNrpEndTime(null); setNrpElapsed(0); }} className="flex-1 py-2.5 bg-white/20 text-white font-bold rounded-xl text-sm active:bg-white/30 transition-all">초기화</button>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div>
+                        <div className="flex items-center justify-center gap-2 mb-3">
+                          <span className="text-sm text-white/60">NRP 시작 시각</span>
+                          <input type="time" step="1" defaultValue={nrpNow.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} id="nrpTimeInput" className="bg-white/20 text-white text-lg font-bold rounded-lg px-3 py-2 text-center border border-white/20 focus:outline-none focus:border-[#F48C25]" />
+                        </div>
+                        <button onClick={() => { const el = document.getElementById("nrpTimeInput"); const [h,m,s] = (el?.value || "").split(":").map(Number); const now = new Date(); now.setHours(h||0, m||0, s||0, 0); setNrpStartTime(now.getTime()); setNrpEndTime(null); setNrpElapsed(Math.floor((Date.now() - now.getTime()) / 1000)); }} className="w-full py-3 bg-[#F48C25] text-white font-extrabold rounded-xl text-lg active:bg-[#E67E17] transition-all">시작</button>
+                      </div>
+                    )}
+                  </div>
+
+                  <button onClick={() => setNrpFullscreen(false)} className="w-full py-3 bg-white/20 text-white font-bold rounded-2xl text-base">닫기</button>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       <p className="text-center text-xs text-gray-400 mt-8 pb-2">제작 : NURDS</p>
     </div>
   );
