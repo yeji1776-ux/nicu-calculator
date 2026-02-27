@@ -519,9 +519,14 @@ export default function NICUDrugCalculator() {
               className={inp + " !text-sm"}
             >
               <option value="">비율을 선택하세요</option>
-              {ratioPresets.map((p, i) => (
-                <option key={i} value={`${p.rate}|${p.dose}`}>{n(p.rate)} = {n(p.dose)}</option>
-              ))}
+              {ratioPresets.map((p, i) => {
+                let tag = "";
+                if (currentRatio) {
+                  const f = (p.dose / p.rate) / (currentRatio.dose / currentRatio.rate);
+                  if (Math.abs(f - 1) > 0.01) tag = f > 1 ? ` (${f % 1 === 0 ? f : f.toFixed(1)}배 농축)` : ` (${1/f % 1 === 0 ? 1/f : (1/f).toFixed(1)}배 희석)`;
+                }
+                return <option key={i} value={`${p.rate}|${p.dose}`}>{n(p.rate)} = {n(p.dose)}{tag}</option>;
+              })}
               {currentRatio && <option value="current">{n(currentRatio.rate)} = {n(currentRatio.dose)} (현재 mix)</option>}
               <option value="custom">직접 입력</option>
             </select>
