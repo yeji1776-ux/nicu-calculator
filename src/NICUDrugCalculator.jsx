@@ -286,10 +286,10 @@ export default function NICUDrugCalculator() {
     if (!currentRatio) return [];
     const { rate, dose } = currentRatio;
     return [
-      { rate: rate * 2, dose, factor: "1/2 희석" },
-      { rate: rate * 4, dose, factor: "1/4 희석" },
-      { rate: rate * 10, dose, factor: "1/10 희석" },
-      { rate: rate * 20, dose, factor: "1/20 희석" },
+      { rate, dose: dose / 2, factor: "1/2 희석" },
+      { rate, dose: dose / 4, factor: "1/4 희석" },
+      { rate, dose: dose / 10, factor: "1/10 희석" },
+      { rate, dose: dose / 20, factor: "1/20 희석" },
     ];
   }, [currentRatio]);
 
