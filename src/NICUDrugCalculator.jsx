@@ -283,21 +283,16 @@ export default function NICUDrugCalculator() {
 
   const ratioPresets = useMemo(() => generateRatioPresets(drug), [drug]);
 
-  // 현재 mix 기준 희석/농축 프리셋 생성
+  // 현재 mix 기준 희석 프리셋 생성
   const dilutionPresets = useMemo(() => {
-    if (!currentRatio) return { diluted: [], concentrated: [] };
+    if (!currentRatio) return [];
     const { rate, dose } = currentRatio;
-    const diluted = [
-      { rate: rate * 4, dose, factor: "4배 희석" },
-      { rate: rate * 3, dose, factor: "3배 희석" },
-      { rate: rate * 2, dose, factor: "2배 희석" },
+    return [
+      { rate: rate * 2, dose, factor: "1/2 희석" },
+      { rate: rate * 4, dose, factor: "1/4 희석" },
+      { rate: rate * 10, dose, factor: "1/10 희석" },
+      { rate: rate * 20, dose, factor: "1/20 희석" },
     ];
-    const concentrated = [
-      { rate: rate / 2, dose, factor: "2배 농축" },
-      { rate: rate / 3, dose, factor: "3배 농축" },
-      { rate: rate / 4, dose, factor: "4배 농축" },
-    ];
-    return { diluted, concentrated };
   }, [currentRatio]);
 
   // 선택된 프리셋 파싱
@@ -528,6 +523,9 @@ export default function NICUDrugCalculator() {
                 return <option key={i} value={`${p.rate}|${p.dose}`}>{n(p.rate)} = {n(p.dose)}{tag}</option>;
               })}
               {currentRatio && <option value="current">{n(currentRatio.rate)} = {n(currentRatio.dose)} (현재 mix)</option>}
+              {dilutionPresets.map((p, i) => (
+                <option key={`dil${i}`} value={`${p.rate}|${p.dose}`}>{n(p.rate)} = {n(p.dose)} ({p.factor})</option>
+              ))}
               <option value="custom">직접 입력</option>
             </select>
             {selectedPresetKey === "custom" && (
