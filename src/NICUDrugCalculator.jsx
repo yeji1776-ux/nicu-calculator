@@ -519,13 +519,10 @@ export default function NICUDrugCalculator() {
               className={inp + " !text-sm"}
             >
               <option value="">비율을 선택하세요</option>
-              {currentRatio && dilutionPresets.diluted.map((p, i) => (
-                <option key={`d${i}`} value={`${p.rate}|${p.dose}`}>{n(p.rate)} cc/hr = {n(p.dose)} {unit} ({p.factor})</option>
+              {ratioPresets.map((p, i) => (
+                <option key={i} value={`${p.rate}|${p.dose}`}>{n(p.rate)} = {n(p.dose)}</option>
               ))}
-              {currentRatio && <option value="current">{n(currentRatio.rate)} cc/hr = {n(currentRatio.dose)} {unit} (현재 mix)</option>}
-              {currentRatio && dilutionPresets.concentrated.map((p, i) => (
-                <option key={`c${i}`} value={`${p.rate}|${p.dose}`}>{n(p.rate)} cc/hr = {n(p.dose)} {unit} ({p.factor})</option>
-              ))}
+              {currentRatio && <option value="current">{n(currentRatio.rate)} = {n(currentRatio.dose)} (현재 mix)</option>}
               <option value="custom">직접 입력</option>
             </select>
             {selectedPresetKey === "custom" && (
