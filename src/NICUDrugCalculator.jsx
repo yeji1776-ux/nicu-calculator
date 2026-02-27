@@ -152,15 +152,13 @@ function InfoPanel() {
           return (
           <button key={i} onClick={() => setExpandedDrug(isOpen ? null : `${activeCat}-${i}`)} className="text-left w-full">
             <div className={`bg-white rounded-2xl p-4 border transition-all ${isOpen ? "border-[#F48C25]/30 shadow-md" : "border-gray-100 shadow-sm"}`}>
-              <div className="flex items-baseline justify-between">
-                <div className="flex items-baseline gap-2">
-                  <p className="text-base font-bold text-gray-800">{d.name}</p>
-                  {d.rangeMin > 0 && <span className="text-xs font-semibold text-[#F48C25]">{d.rangeMin}–{d.rangeMax} {d.unit}</span>}
-                </div>
-                <div className="flex items-center gap-2">
-                  <p className="text-xs text-gray-400 italic">{d.generic}</p>
-                  <span className="text-xs text-gray-400">{isOpen ? "▲" : "▼"}</span>
-                </div>
+              <div className="flex items-center justify-between mb-0.5">
+                <p className="text-base font-bold text-gray-800">{d.name}</p>
+                <span className="text-xs text-gray-400">{isOpen ? "▲" : "▼"}</span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                {d.rangeMin > 0 && <span className="text-xs font-semibold text-[#F48C25]">{d.rangeMin}–{d.rangeMax} {d.unit}</span>}
+                {d.generic && <p className="text-xs text-gray-400 italic">{d.generic}</p>}
               </div>
               {isOpen && (
                 <div className="mt-3 pt-3 border-t border-gray-100">
