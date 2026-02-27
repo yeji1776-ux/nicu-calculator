@@ -551,9 +551,9 @@ export default function NICUDrugCalculator() {
           <div className="mb-4"><p className={lbl}>원하는 용량 ({unit})</p><input type="number" step="0.01" value={desiredDose} onChange={(e) => setDesiredDose(e.target.value)} className={inp} /></div>
           {parseFloat(desiredDose) > 0 && (concentration > 0 || selectedPreset) && (
             <div className="flex flex-col gap-3">
-              {concentration > 0 && <BigResult label="현재 믹싱 기준" value={doseToRate(desiredDose).toFixed(2)} sub="cc/hr" dose={parseFloat(desiredDose)} color="blue" />}
+              {concentration > 0 && currentRatio && <BigResult label={`현재 믹싱 기준 (${n(currentRatio.rate)} cc/hr = ${n(currentRatio.dose)} ${unit})`} value={doseToRate(desiredDose).toFixed(2)} sub="cc/hr" dose={parseFloat(desiredDose)} color="blue" />}
               {selectedPreset && (() => { const presetRate = parseFloat(desiredDose) * selectedPreset.rate / selectedPreset.dose; return (
-                <BigResult label={`선택 비율 (${n(selectedPreset.rate)}=${n(selectedPreset.dose)}) 기준`} value={presetRate.toFixed(2)} sub="cc/hr" dose={parseFloat(desiredDose)} color="amber" />
+                <BigResult label={`선택 비율 (${n(selectedPreset.rate)} cc/hr = ${n(selectedPreset.dose)} ${unit}) 기준`} value={presetRate.toFixed(2)} sub="cc/hr" dose={parseFloat(desiredDose)} color="amber" />
               ); })()}
             </div>
           )}
@@ -566,9 +566,9 @@ export default function NICUDrugCalculator() {
           <div className="mb-4"><p className={lbl}>현재 주입속도 (cc/hr)</p><input type="number" step="0.01" value={givenRate} onChange={(e) => setGivenRate(e.target.value)} className={inp} /></div>
           {parseFloat(givenRate) > 0 && (concentration > 0 || selectedPreset) && (
             <div className="flex flex-col gap-3">
-              {concentration > 0 && <BigResult label="현재 믹싱 기준" value={rateToDose(givenRate).toFixed(2)} sub={unit} dose={rateToDose(givenRate)} color="green" />}
+              {concentration > 0 && currentRatio && <BigResult label={`현재 믹싱 기준 (${n(currentRatio.rate)} cc/hr = ${n(currentRatio.dose)} ${unit})`} value={rateToDose(givenRate).toFixed(2)} sub={unit} dose={rateToDose(givenRate)} color="green" />}
               {selectedPreset && (() => { const presetDose = parseFloat(givenRate) * selectedPreset.dose / selectedPreset.rate; return (
-                <BigResult label={`선택 비율 (${n(selectedPreset.rate)}=${n(selectedPreset.dose)}) 기준`} value={n(presetDose)} sub={unit} dose={presetDose} color="amber" />
+                <BigResult label={`선택 비율 (${n(selectedPreset.rate)} cc/hr = ${n(selectedPreset.dose)} ${unit}) 기준`} value={n(presetDose)} sub={unit} dose={presetDose} color="amber" />
               ); })()}
             </div>
           )}
