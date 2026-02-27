@@ -493,7 +493,6 @@ export default function NICUDrugCalculator() {
                 <span className="text-2xl font-extrabold text-[#F48C25]">{n(currentRatio.dose)}</span>
                 <span className="text-sm text-gray-500">{unit}</span>
               </div>
-              <p className="text-xs text-gray-500 mb-2">{drugAmount} {unitLabel} + {totalVolume} cc · {weight} kg</p>
               <RangeBadge dose={currentRatio.dose} />
             </div>
           ) : (
