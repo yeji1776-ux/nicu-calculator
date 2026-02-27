@@ -389,7 +389,7 @@ export default function NICUDrugCalculator() {
         {showMiniCalc && (
           <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-lg mt-2 relative">
             <button onClick={() => setShowMiniCalc(false)} className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 text-sm font-bold">✕</button>
-            <div className="bg-gray-50 rounded-xl px-4 py-4 mb-3 text-right">
+            <div className="bg-gray-50 rounded-xl px-4 mb-3 text-right flex flex-col justify-end" style={{ height: 80 }}>
               {calcOp && <p className="text-sm text-gray-400">{calcPrev} {calcOp}</p>}
               <p className="text-4xl font-bold text-gray-800 font-mono truncate">{calcDisplay}</p>
             </div>
@@ -581,15 +581,16 @@ export default function NICUDrugCalculator() {
           {concentration > 0 && parseFloat(weight) > 0 && (
             <div className="bg-[#FEF3E2] rounded-2xl p-4 border border-[#F48C25]/30 shadow-sm">
               <p className="text-sm font-bold text-[#E67E17] mb-0.5">현재 믹싱 환산표</p>
-              <p className="text-xs text-gray-500 mb-2">{drug.name} {drugAmount}{unit.startsWith("units") ? " units" : " mg"} + {totalVolume} cc · {weight} kg</p>
+              {currentRatio && <p className="text-xs text-gray-500 mb-0.5">{n(currentRatio.rate)} cc/hr = {n(currentRatio.dose)} {unit}</p>}
+              <p className="text-xs text-gray-400 mb-2">{drug.name} {drugAmount}{unit.startsWith("units") ? " units" : " mg"} + {totalVolume} cc · {weight} kg</p>
               <div className="overflow-auto max-h-40 rounded-lg border border-[#F48C25]/20">
                 <table className="w-full text-xs">
-                  <thead><tr style={{background:"#fde8c8"}} className="sticky top-0 z-10"><th className="text-left px-3 py-1.5 font-medium text-[#E67E17]">{unit}</th><th className="text-right px-3 py-1.5 font-medium text-[#E67E17]">cc/hr</th><th className="text-center px-2 py-1.5 font-medium text-[#E67E17]">범위</th></tr></thead>
+                  <thead><tr style={{background:"#fde8c8"}} className="sticky top-0 z-10"><th className="text-left px-3 py-1.5 font-medium text-[#E67E17]">cc/hr</th><th className="text-right px-3 py-1.5 font-medium text-[#E67E17]">{unit}</th><th className="text-center px-2 py-1.5 font-medium text-[#E67E17]">범위</th></tr></thead>
                   <tbody>
                     {rateTable.map((row, i) => { const ok = isInRange(row.dose); return (
                       <tr key={i} className={`border-t border-[#F48C25]/10 ${ok === true ? "bg-emerald-50/40" : ""}`}>
-                        <td className="px-3 py-1.5 font-semibold text-gray-700">{row.dose}</td>
-                        <td className="px-3 py-1.5 text-right font-mono font-semibold text-[#F48C25]">{row.rate.toFixed(2)}</td>
+                        <td className="px-3 py-1.5 font-mono font-semibold text-[#F48C25]">{row.rate.toFixed(2)}</td>
+                        <td className="px-3 py-1.5 text-right font-semibold text-gray-700">{row.dose}</td>
                         <td className="px-2 py-1.5 text-center">{ok === true ? <span className="text-emerald-400">●</span> : ok === false ? <span className="text-gray-200">○</span> : ""}</td>
                       </tr>); })}
                   </tbody>
@@ -605,12 +606,12 @@ export default function NICUDrugCalculator() {
               <p className="text-xs text-gray-500 mb-2">{n(selectedPreset.rate)} cc/hr = {n(selectedPreset.dose)} {unit}</p>
               <div className="overflow-auto max-h-40 rounded-lg border border-amber-100">
                 <table className="w-full text-xs">
-                  <thead><tr style={{background:"#fef3c7"}} className="sticky top-0 z-10"><th className="text-left px-3 py-1.5 font-medium text-amber-600">{unit}</th><th className="text-right px-3 py-1.5 font-medium text-amber-600">cc/hr</th><th className="text-center px-2 py-1.5 font-medium text-amber-600">범위</th></tr></thead>
+                  <thead><tr style={{background:"#fef3c7"}} className="sticky top-0 z-10"><th className="text-left px-3 py-1.5 font-medium text-amber-600">cc/hr</th><th className="text-right px-3 py-1.5 font-medium text-amber-600">{unit}</th><th className="text-center px-2 py-1.5 font-medium text-amber-600">범위</th></tr></thead>
                   <tbody>
                     {rateTable.map((row, i) => { const ok = isInRange(row.dose); const presetRate = row.dose * selectedPreset.rate / selectedPreset.dose; return (
                       <tr key={i} className={`border-t border-amber-50 ${ok === true ? "bg-emerald-50/40" : ""}`}>
-                        <td className="px-3 py-1.5 font-semibold text-gray-700">{row.dose}</td>
-                        <td className="px-3 py-1.5 text-right font-mono font-semibold text-amber-700">{presetRate.toFixed(2)}</td>
+                        <td className="px-3 py-1.5 font-mono font-semibold text-amber-700">{presetRate.toFixed(2)}</td>
+                        <td className="px-3 py-1.5 text-right font-semibold text-gray-700">{row.dose}</td>
                         <td className="px-2 py-1.5 text-center">{ok === true ? <span className="text-emerald-400">●</span> : ok === false ? <span className="text-gray-200">○</span> : ""}</td>
                       </tr>); })}
                   </tbody>
