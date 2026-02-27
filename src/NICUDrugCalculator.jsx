@@ -283,6 +283,22 @@ export default function NICUDrugCalculator() {
 
   const ratioPresets = useMemo(() => generateRatioPresets(drug), [drug]);
 
+  // 현재 믹싱 기준 희석/농축 프리셋 생성
+  const dilutionPresets = useMemo(() => {
+    if (!currentRatio) return { diluted: [], concentrated: [] };
+    const { rate, dose } = currentRatio;
+    // 희석 = 같은 dose에 rate↑ (농도 낮음), 농축 = 같은 dose에 rate↓ (농도 높음)
+    const diluted = [
+      { rate: rate * 4, dose, factor: "1/4 농축 (4배 희석)" },
+      { rate: rate * 2, dose, factor: "1/2 농축 (2배 희석)" },
+    ];
+    const concentrated = [
+      { rate: rate / 2, dose, factor: "2배 농축" },
+      { rate: rate / 4, dose, factor: "4배 농축" },
+    ];
+    return { diluted, concentrated };
+  }, [currentRatio]);
+
   // 선택된 프리셋 파싱
   const selectedPreset = useMemo(() => {
     if (selectedPresetKey === "current") return currentRatio;
@@ -499,15 +515,13 @@ export default function NICUDrugCalculator() {
               className={inp + " !text-sm"}
             >
               <option value="">비율을 선택하세요</option>
-              {currentRatio && <option value="current">📋 {n(currentRatio.rate)} = {n(currentRatio.dose)} {unit} (현재 믹싱)</option>}
-              {ratioPresets.map((p, i) => {
-                const key = `${p.rate}|${p.dose}`;
-                return (
-                  <option key={i} value={key}>
-                    {n(p.rate)} = {n(p.dose)} {unit}
-                  </option>
-                );
-              })}
+              {currentRatio && dilutionPresets.diluted.map((p, i) => (
+                <option key={`d${i}`} value={`${p.rate}|${p.dose}`}>🔽 {n(p.rate)} cc/hr = {n(p.dose)} {unit} ({p.factor})</option>
+              ))}
+              {currentRatio && <option value="current">📋 {n(currentRatio.rate)} cc/hr = {n(currentRatio.dose)} {unit} (현재 믹싱)</option>}
+              {currentRatio && dilutionPresets.concentrated.map((p, i) => (
+                <option key={`c${i}`} value={`${p.rate}|${p.dose}`}>🔼 {n(p.rate)} cc/hr = {n(p.dose)} {unit} ({p.factor})</option>
+              ))}
               <option value="custom">✏️ 직접 입력</option>
             </select>
             {selectedPresetKey === "custom" && (
@@ -602,7 +616,11 @@ export default function NICUDrugCalculator() {
           {/* 선택 비율 기준 환산표 */}
           {selectedPreset && (
             <div className="bg-amber-50/50 rounded-2xl p-4 border border-amber-200 shadow-sm">
-              <p className="text-sm font-bold text-amber-700 mb-0.5">선택 비율 환산표</p>
+              <p className="text-sm font-bold text-amber-700 mb-0.5">선택 비율 환산표{currentRatio && selectedPresetKey !== "current" && (() => {
+                const ratio = (currentRatio.rate / currentRatio.dose) / (selectedPreset.rate / selectedPreset.dose);
+                if (Math.abs(ratio - 1) < 0.001) return "";
+                return ratio > 1 ? ` (${ratio % 1 === 0 ? ratio : ratio.toFixed(1)}배 농축)` : ` (1/${Math.round(1/ratio)}배 농축 · ${Math.round(1/ratio)}배 희석)`;
+              })()}</p>
               <p className="text-xs text-gray-500 mb-2">{n(selectedPreset.rate)} cc/hr = {n(selectedPreset.dose)} {unit}</p>
               <div className="overflow-auto max-h-40 rounded-lg border border-amber-100">
                 <table className="w-full text-xs">
